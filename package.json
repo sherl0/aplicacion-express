@@ -1,16 +1,14 @@
 {
-  "name": "actividad-render",
-  "version": "1.1.0",
-  "description": "",
-  "module": "index.js",
-  "type": "module",
+  "name": "aplicacion-express",
+  "version": "1.0.0",
+  "description": "Aplicación Node.js con Express y SQLite",
+  "main": "index.js",
   "scripts": {
-    "start": "bun run index.js",
-    "test": "bun test"
+    "start": "node index.js"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "hono": "^4.12.12"
+    "body-parser": "^1.20.3",
+    "express": "^4.18.3",
+    "sqlite3": "^5.1.7"
   }
 }
