@@ -1,50 +1,91 @@
-import { Hono } from 'hono'
-import { Database } from 'bun:sqlite'
+const express = require('express');
+const bodyParser = require('body-parser');
+const sqlite3 = require('sqlite3').verbose();
 
-// Abre la base de datos
-const db = new Database('./base.sqlite3')
-db.run(`CREATE TABLE IF NOT EXISTS todos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    todo TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-)`)
+const app = express();
+const jsonParser = bodyParser.json();
 
-const app = new Hono()
+app.use(function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
 
-app.get('/', (c) => {
-    return c.json({ status: 'ok' })
-})
-
-app.post('/login', async (c) => {
-    return c.json({ status: 'ok' })
-})
-
-app.post('/insert', async (c) => {
-    let body
-    try {
-        body = await c.req.json()
-    } catch {
-        return c.json({ error: 'Falta información necesaria' }, 400)
+const db = new sqlite3.Database('./base.sqlite3', (err) => {
+    if (err) {
+        console.error(err.message);
     }
 
-    const { todo } = body
+    db.run(`CREATE TABLE IF NOT EXISTS todos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        todo TEXT NOT NULL,
+        created_at INTEGER
+    )`);
+});
+
+app.post('/insert', jsonParser, function (req, res) {
+    const { todo } = req.body;
 
     if (!todo) {
-        return c.json({ error: 'Falta información necesaria' }, 400)
+        return res.status(400).json({
+            error: 'Falta información necesaria'
+        });
     }
 
-    try {
-        const stmt = db.prepare('INSERT INTO todos (todo) VALUES (?)')
-        const result = stmt.run(todo)
-        return c.json({ id: Number(result.lastInsertRowid), message: 'Insert was successful' }, 201)
-    } catch (err) {
-        return c.json({ error: err.message }, 500)
-    }
-})
+    const stmt = db.prepare(
+        'INSERT INTO todos (todo, created_at) VALUES (?, CURRENT_TIMESTAMP)'
+    );
 
-export { app, db }
+    stmt.run(todo, function(err) {
+        if (err) {
+            return res.status(500).json({
+                error: 'Error al guardar la tarea'
+            });
+        }
 
-export default {
-    port: process.env.PORT || 3000,
-    fetch: app.fetch,
+        res.status(201).json({
+            id: this.lastID,
+            todo: todo,
+            message: 'Insert was successful'
+        });
+    });
+
+    stmt.finalize();
+});
+
+app.get('/todos', function (req, res) {
+    const sql = 'SELECT * FROM todos';
+
+    db.all(sql, [], function (err, rows) {
+        if (err) {
+            return res.status(500).json({
+                error: 'Error al consultar las tareas'
+            });
+        }
+
+        res.status(200).json(rows);
+    });
+});
+
+app.get('/', function (req, res) {
+    res.status(200).json({
+        status: 'ok'
+    });
+});
+
+app.post('/login', jsonParser, function (req, res) {
+    res.status(200).json({
+        status: 'ok'
+    });
+});
+
+if (require.main === module) {
+    const port = process.env.PORT || 3000;
+
+    app.listen(port, () => {
+        console.log(`Aplicación corriendo en http://localhost:${port}`);
+    });
 }
+
+module.exports = { app: app, db };4
