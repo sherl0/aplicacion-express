@@ -88,4 +88,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { app: app, db };4
+module.exports = { app: app, db };
